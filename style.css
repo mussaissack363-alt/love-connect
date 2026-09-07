@@ -301,7 +301,11 @@ body {
   align-items: center;
   gap: 6px;
 }
-.partner-dot { width: 7px; height: 7px; border-radius: 50%; background: #4a9a4a; }
+.partner-chip.mine {
+  border-color: var(--rose);
+  color: var(--rose);
+}
+.partner-chip.mine .partner-dot { background: var(--rose); }
 
 .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 20px; }
 .tab {

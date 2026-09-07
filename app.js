@@ -297,7 +297,7 @@ function loadRoom() {
   onValue(ref(db, `rooms/${currentRoom}/partners`), snap => {
     const partners = snap.val() || {};
     document.getElementById('partners-row').innerHTML = Object.keys(partners)
-      .map(p => `<div class="partner-chip"><div class="partner-dot"></div>${p}</div>`).join('');
+      .map(p => `<div class="partner-chip ${p === currentName ? 'mine' : ''}"><div class="partner-dot"></div>${p}${p === currentName ? ' <span style="font-size:0.65rem;opacity:0.6">(you)</span>' : ''}</div>`).join('');
   });
 
   onValue(ref(db, `rooms/${currentRoom}/question`), snap => {
