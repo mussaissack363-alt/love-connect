@@ -60,7 +60,17 @@ const games = {
     "Have you ever held back from telling me something important? What was it?",
     "What does trust mean to you, and do you feel fully trusted by me?",
     "Is there a version of yourself you hide from me? Why?",
-    "What is the hardest thing you've forgiven me for?"
+    "What is the hardest thing you've forgiven me for?",
+    "What is something you've never told anyone that you feel safe enough to tell me now?",
+    "When did you first realize your feelings for me were serious?",
+    "What is one habit of mine that quietly bothers you but you've never mentioned?",
+    "Do you feel like we communicate well? What would make it better?",
+    "What is something you're still healing from that affects how you love?",
+    "Have you ever felt embarrassed by me? What happened?",
+    "What is the biggest lie you've ever told me, even a small one?",
+    "What do you need from me that you've been too afraid to ask for?",
+    "Is there something you've apologized for that you don't think I've truly forgiven?",
+    "What is one thing about yourself you hope never changes?"
   ],
   scenario: [
     "We have 48 hours and unlimited money. Where do we go and what do we do?",
@@ -72,7 +82,17 @@ const games = {
     "One of us becomes seriously ill. How does the other show up?",
     "We have the chance to live off-grid for a year. Do we do it? What does that look like?",
     "A close friend of mine does something that hurts you. How do we navigate that together?",
-    "We're offered a chance to start a business together. Do we take it? Why or why not?"
+    "We're offered a chance to start a business together. Do we take it? Why or why not?",
+    "We find out we're expecting a child unexpectedly. What's our first conversation?",
+    "One of us wants to go back to school full-time. How do we make it work?",
+    "We're stuck in a foreign country with no money or phones. What do we do?",
+    "A family member disapproves of our relationship. How do we handle it as a team?",
+    "We have the option to adopt a child. Do we? What does that conversation look like?",
+    "One of us gets a once-in-a-lifetime opportunity that requires 6 months apart. Do we do it?",
+    "We win the lottery tomorrow. What's the first decision we make together?",
+    "We disagree on where to raise our family. How do we decide?",
+    "One of us wants to completely change careers at 40. How do we support that?",
+    "We're given a year with no obligations. How do we spend it?"
   ],
   appreciation: [
     "Name one specific thing your partner did this week that you appreciated but didn't say.",
@@ -84,7 +104,17 @@ const games = {
     "What is a sacrifice your partner has made for you that you've never fully acknowledged?",
     "Describe your partner using only three words — then explain each one.",
     "What is something your partner is proud of that you think they don't celebrate enough?",
-    "When do you feel most proud to be with your partner?"
+    "When do you feel most proud to be with your partner?",
+    "What is a strength your partner has that they probably don't see in themselves?",
+    "What is the most thoughtful thing your partner has ever done for you?",
+    "How has your partner changed your life in a way you didn't expect?",
+    "What is something your partner does effortlessly that you find deeply attractive?",
+    "Name a moment when your partner showed up for you exactly when you needed it.",
+    "What is something your partner taught you about love?",
+    "What do you love most about how your partner treats other people?",
+    "What is a part of your partner's personality that you fell in love with slowly over time?",
+    "What is something your partner does that always makes you smile, no matter your mood?",
+    "If you had to write one sentence about your partner for the world to read, what would it say?"
   ],
   future: [
     "What does financial stability look like for us — and are we aligned on how to get there?",
@@ -96,11 +126,72 @@ const games = {
     "What does growing old together look like to you?",
     "Are there any dreams you've put on hold because of our relationship? Should we revisit them?",
     "What kind of parents do you think we'd be — and is that something you want?",
-    "What is one thing you want us to build together that we haven't started yet?"
+    "What is one thing you want us to build together that we haven't started yet?",
+    "What traditions do you want us to create as a couple?",
+    "How do you want us to keep the romance alive 10 years from now?",
+    "What does retirement look like for us — and are we planning for it the same way?",
+    "Is there a place in the world you want us to live, even temporarily?",
+    "What is one thing you want to accomplish individually that you need my support for?",
+    "How do you want us to show up for each other's families in the future?",
+    "What does a healthy work-life balance look like for us as a unit?",
+    "What is one fear about the future that you haven't shared with me yet?",
+    "How do you want us to handle it if our paths start to feel misaligned?",
+    "What is the legacy you want us to leave — as a couple, a family, or in the world?"
+  ],
+  opinions: [
+    "What is a relationship rule most couples follow that you think is unnecessary?",
+    "Do you think jealousy is ever healthy in a relationship? Where's the line?",
+    "Is it possible to truly be 'just friends' with an ex? What do you think?",
+    "Should couples share all passwords and accounts? Why or why not?",
+    "Do you think love is a feeling or a choice — or both?",
+    "Is it okay to keep some things completely private from your partner?",
+    "Do you think couples should go to bed angry sometimes, or always resolve things first?",
+    "Should both partners always split finances 50/50? What's your view?",
+    "Do you think social media is good or bad for relationships overall?",
+    "Is it possible to love someone and still not be right for them?",
+    "Do you think people can truly change for a relationship, or do they revert eventually?",
+    "Should couples always prioritize each other over friends and family?",
+    "Do you think long-distance relationships can work long-term?",
+    "Is it okay to have a 'type' — or does that limit who you can love?",
+    "Do you think therapy should be a normal part of every relationship?",
+    "Should couples always agree on religion and politics to work?",
+    "Do you think it's possible to fall out of love and back in again?",
+    "Is it ever okay to snoop through your partner's phone?",
+    "Do you think marriage changes a relationship — for better or worse?",
+    "Should couples always present a united front publicly, even if they disagree privately?"
+  ],
+  lovelanguages: [
+    "When do you feel most loved by me — what am I usually doing in that moment?",
+    "What is something I could do more of that would make you feel deeply appreciated?",
+    "Do you feel more loved through words, actions, time, touch, or gifts — and has that changed?",
+    "When you're upset, what kind of support do you actually want from me?",
+    "Is there a way I show love that doesn't land the way I intend it to?",
+    "What does quality time mean to you — what does it look like in practice?",
+    "Do you feel like I notice and acknowledge the small things you do for me?",
+    "What is something I used to do early in our relationship that you miss?",
+    "How do you prefer to be comforted when you're going through something hard?",
+    "What is a gesture — big or small — that would mean the world to you right now?",
+    "Do you feel like your love language is understood and respected by me?",
+    "When do you feel least loved, even if I don't intend it that way?",
+    "What is something you do for me that you wish I recognized more?",
+    "How important is physical affection to you day-to-day — and are you getting enough?",
+    "Is there a love language you've developed over time that I might not know about?",
+    "What does feeling truly cherished look like to you?",
+    "Do you feel like we make enough intentional time for each other?",
+    "What is one way I could make you feel more seen on a regular day?",
+    "How do you show love when you don't have words for it?",
+    "What would your ideal 'I love you without saying it' moment look like?"
   ]
 };
 
-const gameLabels = { truth: '🎯 Truth Cards', scenario: '🌍 Scenario Roles', appreciation: '💛 Appreciation Round', future: '🔭 Future Vision' };
+const gameLabels = {
+  truth: '🎯 Truth Cards',
+  scenario: '🌍 Scenario Roles',
+  appreciation: '💛 Appreciation Round',
+  future: '🔭 Future Vision',
+  opinions: '🔥 Unpopular Opinions',
+  lovelanguages: '💬 Love Languages'
+};
 
 // --- UI helpers ---
 function showScreen(id) {
@@ -266,7 +357,7 @@ function switchTab(name, el) {
 }
 
 // --- Games ---
-let gameRepliesListener = null;
+let gameRepliesListener = null, gameChatListener = null;
 
 function renderGameReplies(snap) {
   const replies = snap.val() || {};
@@ -282,6 +373,32 @@ function subscribeGameReplies() {
   gameRepliesListener = onValue(repliesRef, renderGameReplies);
 }
 
+function subscribeGameChat() {
+  if (gameChatListener) gameChatListener();
+  const chatRef = ref(db, `rooms/${currentRoom}/game/chat`);
+  gameChatListener = onValue(chatRef, snap => {
+    const msgs = snap.val() || {};
+    const items = Object.values(msgs).sort((a, b) => a.time - b.time);
+    const list = document.getElementById('game-chat-list');
+    list.innerHTML = items.map(m => {
+      const mine = m.name === currentName;
+      return `<div class="chat-bubble ${mine ? 'mine' : 'theirs'}">
+        ${!mine ? `<div class="chat-name">${m.name}</div>` : ''}
+        ${m.text}
+      </div>`;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+  });
+}
+
+function sendGameChat() {
+  const input = document.getElementById('game-chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  push(ref(db, `rooms/${currentRoom}/game/chat`), { name: currentName, text, time: Date.now() });
+  input.value = '';
+}
+
 function applyGameState(type, index) {
   currentGame = type;
   gameIndex = index;
@@ -290,6 +407,7 @@ function applyGameState(type, index) {
   document.getElementById('games-list').style.display = 'none';
   document.getElementById('game-active-area').style.display = 'block';
   subscribeGameReplies();
+  subscribeGameChat();
 }
 
 function startGame(type) {
@@ -310,7 +428,9 @@ function sendGameReply() {
 
 function endGame() {
   if (gameRepliesListener) { gameRepliesListener(); gameRepliesListener = null; }
+  if (gameChatListener) { gameChatListener(); gameChatListener = null; }
   set(ref(db, `rooms/${currentRoom}/game/state`), null);
+  set(ref(db, `rooms/${currentRoom}/game/chat`), null);
   document.getElementById('games-list').style.display = 'block';
   document.getElementById('game-active-area').style.display = 'none';
 }
@@ -343,5 +463,5 @@ Object.assign(window, {
   goCouples: () => showScreen('couples'),
   refreshPrompt, selectMode, askAdvisor, askAgain,
   generateCode, joinRoom, leaveRoom, newQuestion, saveAnswer, copyRoomCode, switchTab,
-  startGame, nextGamePrompt, sendGameReply, endGame, askCoupleAdvisor, showToast
+  startGame, nextGamePrompt, sendGameReply, sendGameChat, endGame, askCoupleAdvisor, showToast
 });

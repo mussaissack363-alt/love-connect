@@ -141,6 +141,8 @@
       <div class="game-card" onclick="startGame('scenario')"><div class="game-title">🌍 Scenario Roles</div><div class="game-desc">Navigate hypothetical situations together.</div></div>
       <div class="game-card" onclick="startGame('appreciation')"><div class="game-title">💛 Appreciation Round</div><div class="game-desc">Share specific things you appreciate about each other.</div></div>
       <div class="game-card" onclick="startGame('future')"><div class="game-title">🔭 Future Vision</div><div class="game-desc">Discuss your dreams and align your paths.</div></div>
+      <div class="game-card" onclick="startGame('opinions')"><div class="game-title">🔥 Unpopular Opinions</div><div class="game-desc">Share your real takes on love and relationships.</div></div>
+      <div class="game-card" onclick="startGame('lovelanguages')"><div class="game-title">💬 Love Languages</div><div class="game-desc">Explore how you each give and receive love.</div></div>
     </div>
     <div id="game-active-area" style="display:none">
       <div class="question-card">
@@ -154,6 +156,14 @@
       <textarea class="textarea" id="game-reply-input" placeholder="Your reply to this prompt..."></textarea>
       <button class="btn-rose" onclick="sendGameReply()" style="margin-bottom:10px">Send reply</button>
       <button class="btn-rose" onclick="nextGamePrompt()" style="background:linear-gradient(135deg,#555,#333);margin-bottom:6px">Next prompt →</button>
+      <div class="surface-card" style="margin-bottom:14px">
+        <div class="card-label" style="margin-bottom:10px">💬 Chat</div>
+        <div id="game-chat-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input class="text-input" id="game-chat-input" placeholder="Say something..." style="flex:1" onkeydown="if(event.key==='Enter')sendGameChat()">
+          <button class="btn-rose" onclick="sendGameChat()" style="width:auto;padding:10px 16px">→</button>
+        </div>
+      </div>
       <button class="btn-ghost" onclick="endGame()">End game</button>
     </div>
   </div>
