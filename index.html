@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Umoja Connect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="landing" class="screen active">
+  <div class="logo-mark">
+    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="22" cy="32" r="14" stroke="#c9a84c" stroke-width="1.5"/>
+      <circle cx="42" cy="32" r="14" stroke="#c46a7a" stroke-width="1.5"/>
+      <path d="M32 20 Q36 32 32 44 Q28 32 32 20Z" fill="url(#g)" opacity="0.6"/>
+      <defs>
+        <linearGradient id="g" x1="32" y1="20" x2="32" y2="44">
+          <stop offset="0%" stop-color="#c9a84c"/>
+          <stop offset="100%" stop-color="#c46a7a"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+  <div class="brand-name">Umoja Connect</div>
+  <div class="brand-tagline">Grow together · Privately</div>
+  <div class="mode-cards">
+    <div class="mode-card singles" onclick="goSingles()">
+      <div class="mode-icon">🌱</div>
+      <div class="mode-title">Singles Mode</div>
+      <div class="mode-desc">Build confidence, reflect on your feelings, and prepare for meaningful connections.</div>
+    </div>
+    <div class="mode-card couples" onclick="goCouples()">
+      <div class="mode-icon">🔗</div>
+      <div class="mode-title">Couples Mode</div>
+      <div class="mode-desc">Share a room with your partner. Answer questions, play bonding games, get guidance together.</div>
+    </div>
+  </div>
+  <div class="privacy-note">🔒 No accounts. No data stored on servers. Private by design.</div>
+</div>
+
+<!-- SINGLES -->
+<div id="singles" class="screen">
+  <div class="app-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <span class="header-title">Singles Mode</span>
+    <div class="spacer"></div>
+  </div>
+  <div class="singles-content">
+    <div class="affirmation-card">
+      <div class="card-label gold">Today's Affirmation</div>
+      <div class="affirmation-text" id="daily-affirmation"></div>
+    </div>
+    <div class="surface-card">
+      <div class="card-label">Confidence Prompt</div>
+      <div class="prompt-text" id="daily-prompt"></div>
+      <button class="btn-ghost" onclick="refreshPrompt()">New prompt →</button>
+    </div>
+    <div class="surface-card">
+      <div class="card-label">Umoja Advisor</div>
+      <textarea class="textarea" id="situation-input" placeholder="Share what's on your mind..."></textarea>
+      <div class="mode-options">
+        <div class="mode-opt selected" data-mode="reflective" onclick="selectMode(this)"><span>🪞</span>Reflective</div>
+        <div class="mode-opt" data-mode="strategy" onclick="selectMode(this)"><span>🎯</span>Strategy</div>
+        <div class="mode-opt" data-mode="game" onclick="selectMode(this)"><span>🎮</span>Activity</div>
+      </div>
+      <button class="btn-gold" id="singles-ask-btn" onclick="askAdvisor()">Ask Umoja</button>
+      <div class="response-card" id="singles-response">
+        <div class="card-label green">Umoja's Response</div>
+        <div class="response-text" id="singles-response-text"></div>
+        <div class="feedback-row">
+          <button class="feedback-btn" onclick="showToast('✓ Glad that helped.')">✓ This helped</button>
+          <button class="feedback-btn" onclick="askAgain()">↺ Ask differently</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COUPLES SETUP -->
+<div id="couples" class="screen">
+  <div class="app-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <span class="header-title rose">Couples Mode</span>
+    <div class="spacer"></div>
+  </div>
+  <div class="singles-content">
+    <div class="surface-card" style="text-align:center;margin-bottom:14px">
+      <div class="mode-title" style="color:var(--rose);margin-bottom:6px">Share a Room</div>
+      <div class="mode-desc">Create a room and share the code with your partner. Conversations stay on your devices only.</div>
+    </div>
+    <div class="surface-card" style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <div class="card-label" style="margin-bottom:6px">Your name</div>
+        <input class="text-input" id="partner-name" placeholder="Enter your name" maxlength="20">
+      </div>
+      <div>
+        <div class="card-label" style="margin-bottom:6px">Room code</div>
+        <input class="text-input" id="room-code-input" placeholder="e.g. ROSE24" maxlength="10" style="text-transform:uppercase">
+      </div>
+      <button class="btn-rose" onclick="joinRoom()">Enter Room</button>
+      <button class="btn-ghost" onclick="generateCode()">Generate random code</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROOM -->
+<div id="room" class="screen">
+  <div class="room-header">
+    <button class="back-btn" onclick="leaveRoom()">←</button>
+    <div class="room-code-badge" id="room-code-display">ROOM</div>
+    <button class="back-btn" onclick="copyRoomCode()">📋</button>
+  </div>
+  <div class="partners-row" id="partners-row"></div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('questions',this)">Questions</div>
+    <div class="tab" onclick="switchTab('games',this)">Games</div>
+    <div class="tab" onclick="switchTab('advisor',this)">Advisor</div>
+  </div>
+
+  <div class="tab-content active" id="tab-questions">
+    <div class="question-card">
+      <div class="card-label rose">Question of the Day</div>
+      <div class="question-text" id="couple-question"></div>
+      <button class="btn-rose" style="font-size:0.8rem;padding:10px" onclick="newQuestion()">New question</button>
+    </div>
+    <div class="surface-card" style="margin-bottom:14px">
+      <div class="card-label" style="margin-bottom:10px">Answers</div>
+      <div id="answers-list" style="color:var(--muted);font-size:0.85rem">No answers yet.</div>
+    </div>
+    <textarea class="textarea" id="answer-input" placeholder="Your answer..."></textarea>
+    <button class="btn-rose" onclick="saveAnswer()">Share answer</button>
+  </div>
+
+  <div class="tab-content" id="tab-games">
+    <div id="games-list">
+      <div class="game-card" onclick="startGame('truth')"><div class="game-title">🎯 Truth Cards</div><div class="game-desc">Deep questions that build honesty and closeness.</div></div>
+      <div class="game-card" onclick="startGame('scenario')"><div class="game-title">🌍 Scenario Roles</div><div class="game-desc">Navigate hypothetical situations together.</div></div>
+      <div class="game-card" onclick="startGame('appreciation')"><div class="game-title">💛 Appreciation Round</div><div class="game-desc">Share specific things you appreciate about each other.</div></div>
+      <div class="game-card" onclick="startGame('future')"><div class="game-title">🔭 Future Vision</div><div class="game-desc">Discuss your dreams and align your paths.</div></div>
+    </div>
+    <div id="game-active-area" style="display:none">
+      <div class="question-card">
+        <div class="card-label rose" id="game-label"></div>
+        <div class="question-text" id="game-prompt"></div>
+      </div>
+      <div class="surface-card" style="margin-bottom:14px">
+        <div class="card-label" style="margin-bottom:10px">Replies</div>
+        <div id="game-replies-list" style="color:var(--muted);font-size:0.85rem">No replies yet.</div>
+      </div>
+      <textarea class="textarea" id="game-reply-input" placeholder="Your reply to this prompt..."></textarea>
+      <button class="btn-rose" onclick="sendGameReply()" style="margin-bottom:10px">Send reply</button>
+      <button class="btn-rose" onclick="nextGamePrompt()" style="background:linear-gradient(135deg,#555,#333);margin-bottom:6px">Next prompt →</button>
+      <button class="btn-ghost" onclick="endGame()">End game</button>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-advisor">
+    <div class="card-label" style="margin-bottom:10px">Share a situation as a couple</div>
+    <textarea class="textarea" id="couple-situation" placeholder="Describe something you're navigating together..."></textarea>
+    <button class="btn-rose" id="couple-ask-btn" onclick="askCoupleAdvisor()">Ask Umoja</button>
+    <div class="response-card" id="couple-response">
+      <div class="card-label green">Umoja's Guidance</div>
+      <div class="response-text" id="couple-response-text"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+  // Set your Groq API key here (keep this file out of version control)
+  window.__GROQ_KEY__ = "";
+</script>
+<script src="app.js" type="module"></script>
+</body>
+</html>
