@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, push, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBVgpuJ_kN3z5tPQoffvYIw3MQO_dvaTWg",
@@ -15,7 +15,8 @@ const db = getDatabase(initializeApp(firebaseConfig));
 const GROQ_KEY = window.__GROQ_KEY__ || "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-let currentRoom = null, currentName = null, selectedMode = 'reflective', currentGame = null, gameIndex = 0;
+let currentRoom = null, currentName = null, currentParticipantId = null, currentPresenceRef = null, selectedMode = 'reflective', currentGame = null, gameIndex = 0;
+let roomListeners = [];
 
 const affirmations = [
   "You are worthy of the love you give to others.",
@@ -212,6 +213,118 @@ function setLoading(btn, loading, label) {
   btn.innerHTML = loading ? '<span class="dots"><span></span><span></span><span></span></span>' : label;
 }
 
+function createParticipantId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getStoredParticipant(room) {
+  try {
+    return JSON.parse(sessionStorage.getItem(`love-connect:${room}`));
+  } catch {
+    return null;
+  }
+}
+
+function storeParticipant(room, participant) {
+  try {
+    sessionStorage.setItem(`love-connect:${room}`, JSON.stringify(participant));
+  } catch {}
+}
+
+function clearStoredParticipant(room) {
+  try {
+    sessionStorage.removeItem(`love-connect:${room}`);
+  } catch {}
+}
+
+function renderAnswers(answers) {
+  const list = document.getElementById('answers-list');
+  list.replaceChildren();
+  const items = Object.values(answers || {}).sort((a, b) => (a.time || 0) - (b.time || 0));
+
+  if (!items.length) {
+    const empty = document.createElement('span');
+    empty.className = 'empty-message';
+    empty.textContent = 'No answers yet. Be the first to share.';
+    list.append(empty);
+    return;
+  }
+
+  items.forEach(answer => {
+    const item = document.createElement('div');
+    const author = document.createElement('div');
+    const text = document.createElement('div');
+    item.className = 'saved-answer';
+    author.className = 'answer-author';
+    author.textContent = answer.name || 'Partner';
+    text.textContent = answer.text || '';
+    item.append(author, text);
+    list.append(item);
+  });
+}
+
+function resetGameUi() {
+  currentGame = null;
+  gameIndex = 0;
+  document.getElementById('games-list').style.display = 'block';
+  document.getElementById('game-active-area').style.display = 'none';
+  document.getElementById('game-replies-list').replaceChildren();
+  document.getElementById('game-chat-list').replaceChildren();
+  document.getElementById('game-reply-input').value = '';
+  document.getElementById('game-chat-input').value = '';
+}
+
+function renderPartners(partners) {
+  const row = document.getElementById('partners-row');
+  row.replaceChildren();
+  const entries = Object.entries(partners || {})
+    .filter(([, participant]) => participant?.online === true)
+    .sort((a, b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0) || a[1].name.localeCompare(b[1].name));
+
+  if (!entries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'partner-empty';
+    empty.textContent = 'Waiting for your partner...';
+    row.append(empty);
+    return;
+  }
+
+  entries.forEach(([id, participant]) => {
+    const chip = document.createElement('div');
+    const mine = id === currentParticipantId;
+    chip.className = `partner-chip ${mine ? 'mine' : ''}`;
+
+    const dot = document.createElement('div');
+    dot.className = 'partner-dot';
+
+    const name = document.createElement('span');
+    name.className = 'partner-name';
+    name.textContent = participant?.name || 'Partner';
+
+    const status = document.createElement('span');
+    status.className = 'partner-status';
+    status.textContent = mine ? 'you · online' : 'online';
+
+    chip.append(dot, name, status);
+    row.append(chip);
+  });
+}
+
+function cleanupRoom() {
+  roomListeners.forEach(unsubscribe => unsubscribe());
+  roomListeners = [];
+
+  if (gameRepliesListener) {
+    gameRepliesListener();
+    gameRepliesListener = null;
+  }
+  if (gameChatListener) {
+    gameChatListener();
+    gameChatListener = null;
+  }
+}
+
 // --- AI ---
 async function callGroq(system, user) {
   const res = await fetch(GROQ_URL, {
@@ -284,43 +397,57 @@ function joinRoom() {
   const code = document.getElementById('room-code-input').value.trim().toUpperCase();
   if (!name) { showToast('Enter your name first'); return; }
   if (!code || code.length < 3) { showToast('Enter a valid room code'); return; }
+
   currentName = name;
   currentRoom = code;
-  set(ref(db, `rooms/${code}/partners/${name}`), { joined: Date.now() });
+  let participant = getStoredParticipant(code);
+  if (!participant || participant.name !== name) {
+    participant = { id: createParticipantId(), name };
+  }
+  currentParticipantId = participant.id;
+  storeParticipant(code, participant);
+
+  const presenceRef = ref(db, `rooms/${code}/participants/${participant.id}`);
+  onDisconnect(presenceRef).remove();
+  set(presenceRef, { name, online: true, joinedAt: Date.now() });
   loadRoom();
   showScreen('room');
 }
 
 function loadRoom() {
+  cleanupRoom();
+  if (!currentRoom) return;
+
   document.getElementById('room-code-display').textContent = currentRoom;
 
-  onValue(ref(db, `rooms/${currentRoom}/partners`), snap => {
-    const partners = snap.val() || {};
-    document.getElementById('partners-row').innerHTML = Object.keys(partners)
-      .map(p => `<div class="partner-chip ${p === currentName ? 'mine' : ''}"><div class="partner-dot"></div>${p}${p === currentName ? ' <span style="font-size:0.65rem;opacity:0.6">(you)</span>' : ''}</div>`).join('');
-  });
+  roomListeners.push(onValue(ref(db, `rooms/${currentRoom}/participants`), snap => {
+    if (currentRoom) renderPartners(snap.val() || {});
+  }));
 
-  onValue(ref(db, `rooms/${currentRoom}/question`), snap => {
+  roomListeners.push(onValue(ref(db, `rooms/${currentRoom}/question`), snap => {
+    if (!currentRoom) return;
     const q = snap.val();
     if (q) {
       document.getElementById('couple-question').textContent = q;
     } else {
       set(ref(db, `rooms/${currentRoom}/question`), coupleQuestions[Math.floor(Math.random() * coupleQuestions.length)]);
     }
-  });
+  }));
 
-  onValue(ref(db, `rooms/${currentRoom}/game/state`), snap => {
+  roomListeners.push(onValue(ref(db, `rooms/${currentRoom}/game/state`), snap => {
+    if (!currentRoom) return;
     const state = snap.val();
-    if (state) applyGameState(state.type, state.index);
-  });
+    if (state && games[state.type]?.[state.index] !== undefined) {
+      applyGameState(state.type, state.index);
+    } else if (!state) {
+      resetGameUi();
+    }
+  }));
 
-  onValue(ref(db, `rooms/${currentRoom}/answers`), snap => {
-    const answers = snap.val() || {};
-    const items = Object.values(answers).sort((a, b) => a.time - b.time);
-    document.getElementById('answers-list').innerHTML = items.length
-      ? items.map(a => `<div class="saved-answer"><div class="answer-author">${a.name}</div><div>${a.text}</div></div>`).join('')
-      : '<span style="color:var(--muted);font-size:0.85rem">No answers yet. Be the first to share.</span>';
-  });
+  roomListeners.push(onValue(ref(db, `rooms/${currentRoom}/answers`), snap => {
+    if (!currentRoom) return;
+    renderAnswers(snap.val() || {});
+  }));
 }
 
 function newQuestion() {
@@ -344,8 +471,19 @@ function copyRoomCode() {
 }
 
 function leaveRoom() {
+  const room = currentRoom;
+  const participantId = currentParticipantId;
+  cleanupRoom();
+
+  if (room && participantId) {
+    set(ref(db, `rooms/${room}/participants/${participantId}`), null);
+  }
+  clearStoredParticipant(room);
   currentRoom = null;
   currentName = null;
+  currentParticipantId = null;
+  resetGameUi();
+  document.getElementById('partners-row').replaceChildren();
   showScreen('couples');
 }
 
@@ -360,11 +498,30 @@ function switchTab(name, el) {
 let gameRepliesListener = null, gameChatListener = null;
 
 function renderGameReplies(snap) {
+  const list = document.getElementById('game-replies-list');
+  list.replaceChildren();
   const replies = snap.val() || {};
-  const items = Object.values(replies).sort((a, b) => a.time - b.time);
-  document.getElementById('game-replies-list').innerHTML = items.length
-    ? items.map(r => `<div class="saved-answer"><div class="answer-author">${r.name}</div><div>${r.text}</div></div>`).join('')
-    : '<span style="color:var(--muted);font-size:0.85rem">No replies yet.</span>';
+  const items = Object.values(replies).sort((a, b) => (a.time || 0) - (b.time || 0));
+
+  if (!items.length) {
+    const empty = document.createElement('span');
+    empty.className = 'empty-message';
+    empty.textContent = 'No replies yet.';
+    list.append(empty);
+    return;
+  }
+
+  items.forEach(reply => {
+    const item = document.createElement('div');
+    const author = document.createElement('div');
+    const text = document.createElement('div');
+    item.className = 'saved-answer';
+    author.className = 'answer-author';
+    author.textContent = reply.name || 'Partner';
+    text.textContent = reply.text || '';
+    item.append(author, text);
+    list.append(item);
+  });
 }
 
 function subscribeGameReplies() {
@@ -377,16 +534,29 @@ function subscribeGameChat() {
   if (gameChatListener) gameChatListener();
   const chatRef = ref(db, `rooms/${currentRoom}/game/chat`);
   gameChatListener = onValue(chatRef, snap => {
-    const msgs = snap.val() || {};
-    const items = Object.values(msgs).sort((a, b) => a.time - b.time);
     const list = document.getElementById('game-chat-list');
-    list.innerHTML = items.map(m => {
-      const mine = m.name === currentName;
-      return `<div class="chat-bubble ${mine ? 'mine' : 'theirs'}">
-        ${!mine ? `<div class="chat-name">${m.name}</div>` : ''}
-        ${m.text}
-      </div>`;
-    }).join('');
+    list.replaceChildren();
+    const msgs = snap.val() || {};
+    const items = Object.values(msgs).sort((a, b) => (a.time || 0) - (b.time || 0));
+
+    items.forEach(message => {
+      const bubble = document.createElement('div');
+      const mine = message.name === currentName;
+      bubble.className = `chat-bubble ${mine ? 'mine' : 'theirs'}`;
+
+      if (!mine) {
+        const name = document.createElement('div');
+        name.className = 'chat-name';
+        name.textContent = message.name || 'Partner';
+        bubble.append(name);
+      }
+
+      const text = document.createElement('div');
+      text.textContent = message.text || '';
+      bubble.append(text);
+      list.append(bubble);
+    });
+
     list.scrollTop = list.scrollHeight;
   });
 }
