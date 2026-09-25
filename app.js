@@ -4,7 +4,7 @@ import { getDatabase, ref, set, onValue, push, onDisconnect, remove, serverTimes
 const firebaseConfig = {
   apiKey: "AIzaSyBVgpuJ_kN3z5tPQoffvYIw3MQO_dvaTWg",
   authDomain: "love-connect-b2c89.firebaseapp.com",
-  databaseURL: "https://love-connect-b2c89-default-rtdb.firebaseio.com",
+  databaseURL: "https://love-connect-b2c89-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "love-connect-b2c89",
   storageBucket: "love-connect-b2c89.firebasestorage.app",
   messagingSenderId: "662159375496",
