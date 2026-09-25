@@ -110,10 +110,11 @@
         <input class="text-input" id="room-code-input" placeholder="e.g. ROSE24" maxlength="10" style="text-transform:uppercase">
       </div>
       <div>
-        <div class="card-label" style="margin-bottom:6px">Room password (optional)</div>
-        <div style="display:flex;gap:8px">
-          <input class="text-input" id="room-password" placeholder="Leave blank for public room" type="password" maxlength="20" style="flex:1">
-          <button class="btn-ghost" onclick="setRoomPassword()" style="width:auto;padding:10px 14px;margin-top:0">Set</button>
+        <div class="card-label" style="margin-bottom:6px">Room key (optional)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="text-input" id="room-password" placeholder="Leave blank for public room" maxlength="20" style="flex:1">
+          <button type="button" class="icon-btn" id="toggle-pwd-btn" onclick="toggleRoomPasswordVisibility()" title="Show/hide" style="width:auto;padding:8px">👁</button>
+          <button type="button" class="btn-ghost" onclick="setRoomPassword()" style="width:auto;padding:10px 14px;margin-top:0">Set</button>
         </div>
       </div>
       <button class="btn-rose" onclick="joinRoom()">Enter Room</button>

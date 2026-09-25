@@ -461,6 +461,18 @@ function setRoomPassword() {
   if (code) set(ref(db, `rooms/${code}/meta/password`), password || null);
 }
 
+function toggleRoomPasswordVisibility() {
+  const input = document.getElementById('room-password');
+  const btn = document.getElementById('toggle-pwd-btn');
+  if (input.type === 'text') {
+    input.type = 'password';
+    btn.textContent = '👁';
+  } else {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  }
+}
+
 function sendTyping() {
   if (!currentRoom) return;
   set(ref(db, `rooms/${currentRoom}/typing/${currentParticipantId}`), { name: currentName, at: Date.now() });
@@ -643,12 +655,6 @@ function joinRoom() {
     loadRoom();
     showScreen('room');
   }, { once: true });
-}
-
-function setRoomPassword() {
-  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
-  const password = document.getElementById('room-password')?.value.trim() || '';
-  if (code) set(ref(db, `rooms/${code}/meta/password`), password || null);
 }
 
 function loadRoom() {
@@ -919,5 +925,5 @@ Object.assign(window, {
   toggleTheme, refreshPrompt, selectMode, askAdvisor, askAgain,
   generateCode, joinRoom, leaveRoom, newQuestion, saveAnswer, copyRoomCode, switchTab,
   startGame, nextGamePrompt, sendGameReply, sendGameChat, endGame, askCoupleAdvisor, showToast,
-  setRoomPassword, sendTyping, exportConversationAsync, closeExport, copyExport, downloadExport
+  setRoomPassword, toggleRoomPasswordVisibility, sendTyping, exportConversationAsync, closeExport, copyExport, downloadExport
 });
