@@ -179,6 +179,7 @@
         <div class="card-label" style="margin-bottom:10px">💬 Chat</div>
         <div id="typing-indicator" class="typing-indicator" style="display:none"></div>
         <div id="game-chat-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <div id="read-receipt" class="read-receipt" style="display:none"></div>
         <div style="display:flex;gap:8px">
           <input class="text-input" id="game-chat-input" placeholder="Say something..." style="flex:1" onkeydown="if(event.key==='Enter')sendGameChat()">
           <button class="btn-rose" onclick="sendGameChat()" style="width:auto;padding:10px 16px">→</button>

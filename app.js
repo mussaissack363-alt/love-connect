@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, push, onDisconnect, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, push, onDisconnect, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBVgpuJ_kN3z5tPQoffvYIw3MQO_dvaTWg",
@@ -511,6 +511,7 @@ function subscribeReadReceipts() {
     const others = Object.entries(reads).filter(([id]) => id !== currentParticipantId);
     const receipt = document.getElementById('read-receipt');
     if (receipt) {
+      receipt.style.display = 'block';
       receipt.textContent = others.length ? '✓✓ seen' : '✓ sent';
       receipt.className = others.length ? 'read-receipt seen' : 'read-receipt';
     }
@@ -522,7 +523,7 @@ function toggleReaction(bubble, emoji) {
   const msgId = bubble.dataset.msgId;
   if (!msgId) return;
   const refPath = ref(db, `rooms/${currentRoom}/game/chat/${msgId}/reactions`);
-  onValue(refPath, snap => {
+  get(refPath).then(snap => {
     const reactions = snap.val() || {};
     const mine = reactions[currentParticipantId];
     if (mine === emoji) {
@@ -530,10 +531,12 @@ function toggleReaction(bubble, emoji) {
     } else {
       set(refPath, { ...reactions, [currentParticipantId]: emoji });
     }
-  }, { once: true });
+  });
 }
 
 function renderReactions(bubble, reactions) {
+  const existing = bubble.querySelector('.chat-reactions');
+  if (existing) existing.remove();
   if (!reactions) return;
   const counts = {};
   Object.values(reactions).forEach(e => { counts[e] = (counts[e] || 0) + 1; });
@@ -550,9 +553,7 @@ function renderReactions(bubble, reactions) {
 }
 
 function getRoomData(path) {
-  return new Promise(resolve => {
-    onValue(ref(db, `rooms/${currentRoom}/${path}`), snap => resolve(snap.val()), { once: true });
-  });
+  return get(ref(db, `rooms/${currentRoom}/${path}`)).then(snap => snap.val());
 }
 
 async function exportConversationAsync() {
@@ -597,21 +598,21 @@ function downloadExport() {
 function startRoomCleanup() {
   if (cleanupInterval) return;
   cleanupInterval = setInterval(() => {
-    const roomsRef = ref(db, 'rooms');
-    onValue(roomsRef, snap => {
+    get(ref(db, 'rooms')).then(snap => {
       const rooms = snap.val() || {};
       const now = Date.now();
       const maxAge = 24 * 60 * 60 * 1000;
       Object.entries(rooms).forEach(([code, room]) => {
         if (!room) return;
-        const lastActive = room.lastActive || room.participants
-          ? Math.max(...Object.values(room.participants || {}).map(p => p.joinedAt || 0))
-          : 0;
+        const lastActive = room.lastActive
+          || (room.participants
+            ? Math.max(...Object.values(room.participants || {}).map(p => p.joinedAt || 0))
+            : 0);
         if (lastActive && now - lastActive > maxAge) {
           set(ref(db, `rooms/${code}`), null);
         }
       });
-    }, { once: true });
+    });
   }, 60 * 60 * 1000);
 }
 
@@ -638,8 +639,7 @@ function joinRoom() {
   currentPassword = password;
   storeParticipant(code, participant);
 
-  const roomMetaRef = ref(db, `rooms/${code}/meta`);
-  onValue(roomMetaRef, snap => {
+  get(ref(db, `rooms/${code}/meta`)).then(snap => {
     const meta = snap.val() || {};
     if (meta.password && meta.password !== password) {
       showToast('Incorrect room password');
@@ -654,7 +654,7 @@ function joinRoom() {
     set(presenceRef, { name, avatar: currentAvatar, online: true, joinedAt: Date.now() });
     loadRoom();
     showScreen('room');
-  }, { once: true });
+  });
 }
 
 function loadRoom() {
@@ -807,13 +807,6 @@ function subscribeGameChat() {
 
       const reactions = message.reactions || {};
       renderReactions(bubble, reactions);
-
-      if (mine) {
-        const receipt = document.createElement('div');
-        receipt.className = 'read-receipt';
-        receipt.id = 'read-receipt';
-        bubble.append(receipt);
-      }
 
       bubble.ondblclick = () => {
         const strip = document.createElement('div');
