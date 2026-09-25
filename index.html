@@ -48,6 +48,10 @@
     <button class="back-btn" onclick="goHome()">←</button>
     <span class="header-title">Singles Mode</span>
     <div class="spacer"></div>
+    <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+  </div>
+  <div class="singles-header">
+    <div class="streak-badge" id="streak-badge" title="Consecutive days">🔥 1 day</div>
   </div>
   <div class="singles-content">
     <div class="affirmation-card">
@@ -98,8 +102,19 @@
         <input class="text-input" id="partner-name" placeholder="Enter your name" maxlength="20">
       </div>
       <div>
+        <div class="card-label" style="margin-bottom:6px">Pick an avatar</div>
+        <div class="avatar-picker" id="avatar-picker"></div>
+      </div>
+      <div>
         <div class="card-label" style="margin-bottom:6px">Room code</div>
         <input class="text-input" id="room-code-input" placeholder="e.g. ROSE24" maxlength="10" style="text-transform:uppercase">
+      </div>
+      <div>
+        <div class="card-label" style="margin-bottom:6px">Room password (optional)</div>
+        <div style="display:flex;gap:8px">
+          <input class="text-input" id="room-password" placeholder="Leave blank for public room" type="password" maxlength="20" style="flex:1">
+          <button class="btn-ghost" onclick="setRoomPassword()" style="width:auto;padding:10px 14px;margin-top:0">Set</button>
+        </div>
       </div>
       <button class="btn-rose" onclick="joinRoom()">Enter Room</button>
       <button class="btn-ghost" onclick="generateCode()">Generate random code</button>
@@ -113,6 +128,7 @@
     <button class="back-btn" onclick="leaveRoom()">←</button>
     <div class="room-code-badge" id="room-code-display">ROOM</div>
     <button class="back-btn" onclick="copyRoomCode()">📋</button>
+    <button class="icon-btn" onclick="exportConversationAsync()" title="Export conversation">⬇</button>
   </div>
   <div class="presence-heading">Online now</div>
   <div class="partners-row" id="partners-row" aria-live="polite"></div>
@@ -159,6 +175,7 @@
       <button class="btn-rose" onclick="nextGamePrompt()" style="background:linear-gradient(135deg,#555,#333);margin-bottom:6px">Next prompt →</button>
       <div class="surface-card" style="margin-bottom:14px">
         <div class="card-label" style="margin-bottom:10px">💬 Chat</div>
+        <div id="typing-indicator" class="typing-indicator" style="display:none"></div>
         <div id="game-chat-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px">
           <input class="text-input" id="game-chat-input" placeholder="Say something..." style="flex:1" onkeydown="if(event.key==='Enter')sendGameChat()">
@@ -181,10 +198,26 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="export-modal" id="export-modal" onclick="if(event.target===this)closeExport()">
+  <div class="surface-card">
+    <div class="app-header" style="padding:16px 20px 0">
+      <span class="header-title">Export Conversation</span>
+      <button class="back-btn" onclick="closeExport()">×</button>
+    </div>
+    <div style="padding:16px 20px">
+      <textarea class="textarea" id="export-text" style="min-height:200px" readonly></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-rose" onclick="copyExport()" style="flex:1">Copy to clipboard</button>
+        <button class="btn-ghost" onclick="downloadExport()" style="flex:1">Download .txt</button>
+        <button class="btn-ghost" onclick="closeExport()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   // Set your Groq API key here (keep this file out of version control)
   window.__GROQ_KEY__ = "";
 </script>
 <script src="app.js" type="module"></script>
-</body>
-</html>

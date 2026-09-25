@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, push, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, onValue, push, onDisconnect, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBVgpuJ_kN3z5tPQoffvYIw3MQO_dvaTWg",
@@ -15,8 +15,11 @@ const db = getDatabase(initializeApp(firebaseConfig));
 const GROQ_KEY = window.__GROQ_KEY__ || "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-let currentRoom = null, currentName = null, currentParticipantId = null, currentPresenceRef = null, selectedMode = 'reflective', currentGame = null, gameIndex = 0;
-let roomListeners = [];
+const AVATARS = ['🐱', '🐶', '🦊', '🐼', '🐯', '🦁', '🐸', '🐵', '🦄', '🐙', '🦋', '🌸'];
+const REACTIONS = ['👍', '❤️', '🔥', '😊', '😢', '🎉', '✨', '💯'];
+
+let currentRoom = null, currentName = null, currentParticipantId = null, currentPresenceRef = null, currentAvatar = null, currentPassword = null, selectedMode = 'reflective', currentGame = null, gameIndex = 0;
+let roomListeners = [], typingTimeout = null, cleanupInterval = null;
 
 const affirmations = [
   "You are worthy of the love you give to others.",
@@ -213,6 +216,62 @@ function setLoading(btn, loading, label) {
   btn.innerHTML = loading ? '<span class="dots"><span></span><span></span><span></span></span>' : label;
 }
 
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', current === 'light' ? null : 'light');
+  localStorage.setItem('love-connect-theme', current === 'light' ? 'dark' : 'light');
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem('love-connect-theme');
+  if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+}
+
+function getStreakKey() {
+  return 'love-connect-streak';
+}
+
+function updateStreak() {
+  const today = new Date().toDateString();
+  const data = JSON.parse(localStorage.getItem(getStreakKey()) || '{"lastDay":null,"count":0}');
+  if (data.lastDay === today) return data.count;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (data.lastDay === yesterday.toDateString()) {
+    data.count += 1;
+  } else if (data.lastDay !== today) {
+    data.count = 1;
+  }
+  data.lastDay = today;
+  localStorage.setItem(getStreakKey(), JSON.stringify(data));
+  return data.count;
+}
+
+function renderStreak() {
+  const count = updateStreak();
+  const badge = document.getElementById('streak-badge');
+  if (badge) badge.textContent = `🔥 ${count} ${count === 1 ? 'day' : 'days'}`;
+}
+
+function buildAvatarPicker() {
+  const picker = document.getElementById('avatar-picker');
+  if (!picker) return;
+  picker.replaceChildren();
+  AVATARS.forEach(avatar => {
+    const opt = document.createElement('div');
+    opt.className = 'avatar-option';
+    opt.textContent = avatar;
+    opt.onclick = () => {
+      document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      currentAvatar = avatar;
+      storeParticipant(currentRoom || 'setup', { avatar });
+    };
+    picker.append(opt);
+  });
+}
+
 function createParticipantId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -295,6 +354,10 @@ function renderPartners(partners) {
     const mine = id === currentParticipantId;
     chip.className = `partner-chip ${mine ? 'mine' : ''}`;
 
+    const avatar = document.createElement('span');
+    avatar.className = 'partner-avatar';
+    avatar.textContent = participant?.avatar || '🐱';
+
     const dot = document.createElement('div');
     dot.className = 'partner-dot';
 
@@ -306,7 +369,7 @@ function renderPartners(partners) {
     status.className = 'partner-status';
     status.textContent = mine ? 'you · online' : 'online';
 
-    chip.append(dot, name, status);
+    chip.append(avatar, dot, name, status);
     row.append(chip);
   });
 }
@@ -392,26 +455,200 @@ function generateCode() {
   document.getElementById('room-code-input').value = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
+function setRoomPassword() {
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  const password = document.getElementById('room-password')?.value.trim() || '';
+  if (code) set(ref(db, `rooms/${code}/meta/password`), password || null);
+}
+
+function sendTyping() {
+  if (!currentRoom) return;
+  set(ref(db, `rooms/${currentRoom}/typing/${currentParticipantId}`), { name: currentName, at: Date.now() });
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    set(ref(db, `rooms/${currentRoom}/typing/${currentParticipantId}`), null);
+  }, 3000);
+}
+
+function subscribeTyping() {
+  const typingRef = ref(db, `rooms/${currentRoom}/typing`);
+  const listener = onValue(typingRef, snap => {
+    const typing = snap.val() || {};
+    const others = Object.entries(typing).filter(([id]) => id !== currentParticipantId);
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+      indicator.style.display = others.length ? 'block' : 'none';
+      if (others.length) {
+        const names = others.map(([, t]) => t.name).join(', ');
+        indicator.textContent = `${names} ${others.length === 1 ? 'is' : 'are'} typing...`;
+      }
+    }
+  });
+  roomListeners.push(listener);
+}
+
+function sendReadReceipt() {
+  if (!currentRoom) return;
+  set(ref(db, `rooms/${currentRoom}/read/${currentParticipantId}`), Date.now());
+}
+
+function subscribeReadReceipts() {
+  const readRef = ref(db, `rooms/${currentRoom}/read`);
+  const listener = onValue(readRef, snap => {
+    const reads = snap.val() || {};
+    const others = Object.entries(reads).filter(([id]) => id !== currentParticipantId);
+    const receipt = document.getElementById('read-receipt');
+    if (receipt) {
+      receipt.textContent = others.length ? '✓✓ seen' : '✓ sent';
+      receipt.className = others.length ? 'read-receipt seen' : 'read-receipt';
+    }
+  });
+  roomListeners.push(listener);
+}
+
+function toggleReaction(bubble, emoji) {
+  const msgId = bubble.dataset.msgId;
+  if (!msgId) return;
+  const refPath = ref(db, `rooms/${currentRoom}/game/chat/${msgId}/reactions`);
+  onValue(refPath, snap => {
+    const reactions = snap.val() || {};
+    const mine = reactions[currentParticipantId];
+    if (mine === emoji) {
+      set(refPath, null);
+    } else {
+      set(refPath, { ...reactions, [currentParticipantId]: emoji });
+    }
+  }, { once: true });
+}
+
+function renderReactions(bubble, reactions) {
+  if (!reactions) return;
+  const counts = {};
+  Object.values(reactions).forEach(e => { counts[e] = (counts[e] || 0) + 1; });
+  const row = document.createElement('div');
+  row.className = 'chat-reactions';
+  Object.entries(counts).forEach(([emoji, count]) => {
+    const btn = document.createElement('button');
+    btn.className = 'reaction-btn';
+    btn.textContent = `${emoji} ${count}`;
+    btn.onclick = () => toggleReaction(bubble, emoji);
+    row.append(btn);
+  });
+  bubble.append(row);
+}
+
+function getRoomData(path) {
+  return new Promise(resolve => {
+    onValue(ref(db, `rooms/${currentRoom}/${path}`), snap => resolve(snap.val()), { once: true });
+  });
+}
+
+async function exportConversationAsync() {
+  const lines = [];
+  if (!currentRoom) return;
+  const [question, answers, chat] = await Promise.all([
+    getRoomData('question'),
+    getRoomData('answers'),
+    getRoomData('game/chat')
+  ]);
+  if (question) lines.push(`Question: ${question}`);
+  Object.values(answers || {}).sort((a, b) => (a.time || 0) - (b.time || 0))
+    .forEach(a => lines.push(`${a.name}: ${a.text}`));
+  Object.values(chat || {}).sort((a, b) => (a.time || 0) - (b.time || 0))
+    .forEach(m => lines.push(`Chat - ${m.name}: ${m.text}`));
+  document.getElementById('export-text').value = lines.join('\n\n') || 'No conversation to export.';
+  document.getElementById('export-modal').classList.add('show');
+}
+
+function closeExport() {
+  document.getElementById('export-modal').classList.remove('show');
+}
+
+function copyExport() {
+  const ta = document.getElementById('export-text');
+  ta.select();
+  document.execCommand('copy');
+  showToast('Copied to clipboard');
+}
+
+function downloadExport() {
+  const text = document.getElementById('export-text').value;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `love-connect-${currentRoom || 'conversation'}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function startRoomCleanup() {
+  if (cleanupInterval) return;
+  cleanupInterval = setInterval(() => {
+    const roomsRef = ref(db, 'rooms');
+    onValue(roomsRef, snap => {
+      const rooms = snap.val() || {};
+      const now = Date.now();
+      const maxAge = 24 * 60 * 60 * 1000;
+      Object.entries(rooms).forEach(([code, room]) => {
+        if (!room) return;
+        const lastActive = room.lastActive || room.participants
+          ? Math.max(...Object.values(room.participants || {}).map(p => p.joinedAt || 0))
+          : 0;
+        if (lastActive && now - lastActive > maxAge) {
+          set(ref(db, `rooms/${code}`), null);
+        }
+      });
+    }, { once: true });
+  }, 60 * 60 * 1000);
+}
+
+function updateRoomActivity() {
+  if (!currentRoom) return;
+  set(ref(db, `rooms/${currentRoom}/lastActive`), Date.now());
+}
+
 function joinRoom() {
   const name = document.getElementById('partner-name').value.trim();
   const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  const password = document.getElementById('room-password')?.value.trim() || '';
   if (!name) { showToast('Enter your name first'); return; }
   if (!code || code.length < 3) { showToast('Enter a valid room code'); return; }
 
-  currentName = name;
-  currentRoom = code;
   let participant = getStoredParticipant(code);
   if (!participant || participant.name !== name) {
-    participant = { id: createParticipantId(), name };
+    participant = { id: createParticipantId(), name, avatar: currentAvatar || '🐱' };
   }
   currentParticipantId = participant.id;
+  currentAvatar = participant.avatar;
+  currentName = name;
+  currentRoom = code;
+  currentPassword = password;
   storeParticipant(code, participant);
 
-  const presenceRef = ref(db, `rooms/${code}/participants/${participant.id}`);
-  onDisconnect(presenceRef).remove();
-  set(presenceRef, { name, online: true, joinedAt: Date.now() });
-  loadRoom();
-  showScreen('room');
+  const roomMetaRef = ref(db, `rooms/${code}/meta`);
+  onValue(roomMetaRef, snap => {
+    const meta = snap.val() || {};
+    if (meta.password && meta.password !== password) {
+      showToast('Incorrect room password');
+      return;
+    }
+    if (meta.password && !password) {
+      showToast('This room requires a password');
+      return;
+    }
+    const presenceRef = ref(db, `rooms/${code}/participants/${participant.id}`);
+    onDisconnect(presenceRef).remove();
+    set(presenceRef, { name, avatar: currentAvatar, online: true, joinedAt: Date.now() });
+    loadRoom();
+    showScreen('room');
+  }, { once: true });
+}
+
+function setRoomPassword() {
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  const password = document.getElementById('room-password')?.value.trim() || '';
+  if (code) set(ref(db, `rooms/${code}/meta/password`), password || null);
 }
 
 function loadRoom() {
@@ -419,6 +656,7 @@ function loadRoom() {
   if (!currentRoom) return;
 
   document.getElementById('room-code-display').textContent = currentRoom;
+  updateRoomActivity();
 
   roomListeners.push(onValue(ref(db, `rooms/${currentRoom}/participants`), snap => {
     if (currentRoom) renderPartners(snap.val() || {});
@@ -448,6 +686,9 @@ function loadRoom() {
     if (!currentRoom) return;
     renderAnswers(snap.val() || {});
   }));
+
+  subscribeTyping();
+  subscribeReadReceipts();
 }
 
 function newQuestion() {
@@ -464,6 +705,8 @@ function saveAnswer() {
   push(ref(db, `rooms/${currentRoom}/answers`), { name: currentName, text, time: Date.now() });
   document.getElementById('answer-input').value = '';
   showToast('Answer shared ✓');
+  sendReadReceipt();
+  sendTyping();
 }
 
 function copyRoomCode() {
@@ -543,6 +786,7 @@ function subscribeGameChat() {
       const bubble = document.createElement('div');
       const mine = message.name === currentName;
       bubble.className = `chat-bubble ${mine ? 'mine' : 'theirs'}`;
+      bubble.dataset.msgId = message.id || '';
 
       if (!mine) {
         const name = document.createElement('div');
@@ -554,6 +798,33 @@ function subscribeGameChat() {
       const text = document.createElement('div');
       text.textContent = message.text || '';
       bubble.append(text);
+
+      const reactions = message.reactions || {};
+      renderReactions(bubble, reactions);
+
+      if (mine) {
+        const receipt = document.createElement('div');
+        receipt.className = 'read-receipt';
+        receipt.id = 'read-receipt';
+        bubble.append(receipt);
+      }
+
+      bubble.ondblclick = () => {
+        const strip = document.createElement('div');
+        strip.className = 'chat-reactions';
+        REACTIONS.forEach(emoji => {
+          const btn = document.createElement('button');
+          btn.className = 'reaction-btn';
+          btn.textContent = emoji;
+          btn.onclick = () => toggleReaction(bubble, emoji);
+          strip.append(btn);
+        });
+        if (bubble.querySelector('.chat-reactions')) {
+          bubble.querySelector('.chat-reactions').remove();
+        }
+        bubble.append(strip);
+      };
+
       list.append(bubble);
     });
 
@@ -565,8 +836,10 @@ function sendGameChat() {
   const input = document.getElementById('game-chat-input');
   const text = input.value.trim();
   if (!text) return;
-  push(ref(db, `rooms/${currentRoom}/game/chat`), { name: currentName, text, time: Date.now() });
+  push(ref(db, `rooms/${currentRoom}/game/chat`), { name: currentName, text, time: Date.now(), id: createParticipantId() });
   input.value = '';
+  sendReadReceipt();
+  sendTyping();
 }
 
 function applyGameState(type, index) {
@@ -594,6 +867,7 @@ function sendGameReply() {
   if (!text) { showToast('Write a reply first'); return; }
   push(ref(db, `rooms/${currentRoom}/game/replies/${gameIndex}`), { name: currentName, text, time: Date.now() });
   document.getElementById('game-reply-input').value = '';
+  sendReadReceipt();
 }
 
 function endGame() {
@@ -626,12 +900,24 @@ async function askCoupleAdvisor() {
 
 // --- Init & expose globals ---
 loadSinglesContent();
+loadTheme();
+renderStreak();
+buildAvatarPicker();
+startRoomCleanup();
+
+// Wire typing indicators on chat and answer inputs
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'game-chat-input' || e.target.id === 'answer-input' || e.target.id === 'game-reply-input') {
+    sendTyping();
+  }
+});
 
 Object.assign(window, {
   goHome: () => showScreen('landing'),
-  goSingles: () => { showScreen('singles'); loadSinglesContent(); },
-  goCouples: () => showScreen('couples'),
-  refreshPrompt, selectMode, askAdvisor, askAgain,
+  goSingles: () => { showScreen('singles'); loadSinglesContent(); renderStreak(); },
+  goCouples: () => { showScreen('couples'); buildAvatarPicker(); },
+  toggleTheme, refreshPrompt, selectMode, askAdvisor, askAgain,
   generateCode, joinRoom, leaveRoom, newQuestion, saveAnswer, copyRoomCode, switchTab,
-  startGame, nextGamePrompt, sendGameReply, sendGameChat, endGame, askCoupleAdvisor, showToast
+  startGame, nextGamePrompt, sendGameReply, sendGameChat, endGame, askCoupleAdvisor, showToast,
+  setRoomPassword, sendTyping, exportConversationAsync, closeExport, copyExport, downloadExport
 });
