@@ -1,6 +1,4 @@
-## love-connect
 
-```markdown
 # Love Connect
 
 A clean and modern web platform designed to help people build stronger relationships and grow in confidence.
